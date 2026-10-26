@@ -55,11 +55,15 @@ hr{border:0;border-top:1px solid var(--line);margin:15px 0}
 .modalbox{background:#fff;width:100%;max-width:620px;border-radius:22px 22px 0 0;padding:18px 16px 28px}
 .modalbox h2{margin:0 0 12px;font-size:20px}
 .footer{text-align:center;color:#9ca3af;font-size:12px;margin-top:20px}
-.voice-card{padding:10px;margin-bottom:6px}.voice-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
-.voice-actions button{width:100%;height:42px}.recording{background:#fee2e2;color:#b91c1c}
-.voice-note{border:1px solid var(--line);border-radius:10px;padding:10px;margin-top:8px;background:#fafafa}
-.voice-note audio{width:100%;margin-top:7px}.voice-note .note-meta{font-size:12px;color:var(--muted);margin-top:4px}
-.voice-note textarea{width:100%;min-height:64px;margin-top:8px;border:1px solid #d1d5db;border-radius:8px;padding:8px;font-size:14px}
+.voice-card{padding:8px;margin-bottom:6px}.voice-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:7px}
+.voice-actions button{width:100%;height:38px}.recording{background:#fee2e2;color:#b91c1c}
+#voiceNotes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:7px}
+.voice-note{min-width:0;border:1px solid var(--line);border-radius:9px;padding:7px;background:#fafafa;overflow:hidden}
+.voice-note .note-meta{font-size:11px;color:var(--muted);margin:3px 0;line-height:1.3}
+.voice-note audio{display:block;width:100%;height:34px;margin:5px 0}
+.voice-note .voice-delete{width:100%;height:32px;font-size:12px;padding:0 4px;margin-top:4px}
+.voice-note .voice-number{font-size:14px;font-weight:800;display:block;overflow-wrap:anywhere}
+@media(min-width:520px){#voiceNotes{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .toggle-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px;font-size:14px}
 .toggle-row input{width:22px;height:22px}.voice-status{font-size:13px;margin-top:6px;color:var(--muted);line-height:1.5}
 @media(min-width:600px){.modal{align-items:center}.modalbox{border-radius:22px}}
@@ -94,7 +98,7 @@ hr{border:0;border-top:1px solid var(--line);margin:15px 0}
 
     <div class="card voice-card">
       <b>🎙️ 語音備忘錄</b>
-      <div class="muted">每次錄音都會獨立保存，不會被下一筆覆蓋。</div>
+      <div class="muted">每筆錄音各自保存；下方以小格排列，聽完可直接刪除。</div>
       <div class="toggle-row">
         <label for="transcriptToggle" style="margin:0">語音轉文字（可關閉）</label>
         <input id="transcriptToggle" type="checkbox" checked>
@@ -110,7 +114,7 @@ hr{border:0;border-top:1px solid var(--line);margin:15px 0}
       </div>
       <div style="margin-top:10px"><b>已保存的錄音</b><span id="voiceCount" class="muted">（0）</span></div>
       <div id="voiceNotes"><div class="empty">目前沒有錄音</div></div>
-      <div class="notice" style="margin-top:8px">提醒：網頁錄音通常需要 HTTPS 網址及麥克風權限。iPhone 通話中可能無法同時使用麥克風；錄音資料存在本機瀏覽器，請定期匯出或備份。</div>
+      <div class="muted" style="margin-top:7px">錄音只存在這台裝置的瀏覽器中；清除網站資料可能會一起刪除。</div>
     </div>
 
     <div class="card stat-card">
@@ -420,55 +424,39 @@ async function refreshVoiceNotes(){
   try{
     const notes=await getVoiceNotes();
     count.textContent="（"+notes.length+"）";
-    if(!notes.length){box.innerHTML='<div class="empty">目前沒有錄音</div>';return;}
+    if(!notes.length){box.innerHTML='<div class="empty" style="grid-column:1/-1;padding:12px">目前沒有錄音</div>';return;}
     box.innerHTML="";
-    notes.forEach(note=>{
+    notes.forEach((note,index)=>{
       const item=document.createElement("div");
       item.className="voice-note";
-      const title=document.createElement("b");
-      title.textContent=new Date(note.createdAt).toLocaleString("zh-TW")+"｜語音備忘錄";
+      const title=document.createElement("span");
+      title.className="voice-number";
+      title.textContent="錄音 "+(notes.length-index);
       const meta=document.createElement("div");
       meta.className="note-meta";
-      meta.textContent="錄音獨立保存"+(note.transcript ? "｜已附文字" : "");
+      const d=new Date(note.createdAt);
+      meta.textContent=d.toLocaleDateString("zh-TW",{month:"2-digit",day:"2-digit"})+" "+d.toLocaleTimeString("zh-TW",{hour:"2-digit",minute:"2-digit"});
       const audio=document.createElement("audio");
       audio.controls=true;
+      audio.preload="metadata";
       audio.src=URL.createObjectURL(note.blob);
-      audio.onended=()=>URL.revokeObjectURL(audio.src);
-      const memo=document.createElement("textarea");
-      memo.placeholder="可選填備註，例如：客人 3 號、加辣、另外裝";
-      memo.value=note.memo||"";
-      memo.addEventListener("change",async()=>{
-        note.memo=memo.value;
-        await voiceTx("readwrite",s=>s.put(note));
-      });
-      const transcript=document.createElement("div");
-      transcript.className="note-meta";
-      transcript.textContent=note.transcript ? "語音辨識參考文字："+note.transcript : "";
-      const actions=document.createElement("div");
-      actions.className="voice-actions";
-      const download=document.createElement("button");
-      download.className="light";
-      download.textContent="下載音檔";
-      download.onclick=()=>{
-        const url=URL.createObjectURL(note.blob);
-        const a=document.createElement("a");
-        a.href=url;a.download="語音備忘錄_"+new Date(note.createdAt).toISOString().replace(/[:.]/g,"-")+".webm";
-        a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
-      };
       const del=document.createElement("button");
-      del.className="danger";
-      del.textContent="刪除這筆";
+      del.className="danger voice-delete";
+      del.textContent="🗑 刪除這筆";
       del.onclick=async()=>{
-        if(!confirm("確定刪除這一筆錄音嗎？此動作無法復原。"))return;
-        await voiceTx("readwrite",s=>s.delete(note.id));
-        refreshVoiceNotes();
+        del.disabled=true;
+        try{
+          await voiceTx("readwrite",s=>s.delete(note.id));
+          if(audio.src)URL.revokeObjectURL(audio.src);
+          await refreshVoiceNotes();
+          setVoiceStatus("已刪除錄音。");
+        }catch(e){del.disabled=false;setVoiceStatus("刪除失敗，請再試一次。");}
       };
-      actions.append(download,del);
-      item.append(title,meta,audio,memo,transcript,actions);
+      item.append(title,meta,audio,del);
       box.append(item);
     });
   }catch(e){
-    box.innerHTML='<div class="empty">讀取錄音清單失敗：'+escapeHtml(e.message||"未知錯誤")+'</div>';
+    box.innerHTML='<div class="empty" style="grid-column:1/-1">讀取錄音清單失敗：'+escapeHtml(e.message||"未知錯誤")+'</div>';
   }
 }
 function setVoiceStatus(msg){document.getElementById("voiceStatus").textContent=msg;}
