@@ -98,17 +98,19 @@ hr{border:0;border-top:1px solid var(--line);margin:15px 0}
     </div>
 
     <div class="card voice-card">
-      <div class="toggle-row">
-        <b>🎙️ 錄音</b>
-        <label for="transcriptToggle" style="margin:0;display:flex;align-items:center;gap:5px">轉文字 <input id="transcriptToggle" type="checkbox" checked></label>
+      <div class="voice-layout">
+        <div class="voice-control">
+          <div class="voice-heading"><b>🎙️ 錄音</b></div>
+          <div class="voice-actions"><button id="recordBtn" class="blue" onclick="toggleRecording()">🎙️ 開始錄音</button></div>
+          <div class="toggle-row" style="justify-content:flex-start;margin-top:7px"><label for="transcriptToggle" style="margin:0;display:flex;align-items:center;gap:4px">轉文字 <input id="transcriptToggle" type="checkbox" checked></label></div>
+          <div id="voiceStatus" class="voice-status" aria-live="polite"></div>
+          <div id="transcriptArea" class="hidden"><textarea id="liveTranscript" placeholder="" aria-label="錄音即時轉文字" style="height:60px;font-size:13px;margin-top:5px"></textarea></div>
+        </div>
+        <div class="voice-saved">
+          <div class="voice-heading"><b>已保存</b><span id="voiceCount" class="muted">0</span></div>
+          <div id="voiceNotes"><div class="empty" style="padding:8px">尚無錄音</div></div>
+        </div>
       </div>
-      <div class="voice-actions" style="grid-template-columns:1fr">
-        <button id="recordBtn" class="blue" onclick="toggleRecording()">🎙️ 開始錄音</button>
-      </div>
-      <div id="voiceStatus" class="voice-status" aria-live="polite"></div>
-      <div id="transcriptArea" class="hidden"><textarea id="liveTranscript" placeholder="" aria-label="錄音即時轉文字" style="height:60px;font-size:13px;margin-top:5px"></textarea></div>
-      <div style="margin-top:7px"><b>錄音</b><span id="voiceCount" class="muted">（0）</span></div>
-      <div id="voiceNotes"><div class="empty" style="grid-column:1/-1;padding:8px">尚無錄音</div></div>
     </div>
 
     <div class="card stat-card">
@@ -376,6 +378,8 @@ let activeChunks = [];
 let recognition = null;
 let transcriptText = "";
 let currentNoteId = null;
+let isSavingVoice = false;
+let expandedVoiceId = null;
 
 function openVoiceDB(){
   return new Promise((resolve,reject)=>{
@@ -417,44 +421,30 @@ async function refreshVoiceNotes(){
   const count=document.getElementById("voiceCount");
   try{
     const notes=await getVoiceNotes();
-    count.textContent="（"+notes.length+"）";
-    if(!notes.length){box.innerHTML='<div class="empty" style="grid-column:1/-1;padding:12px">尚無錄音</div>';return;}
+    count.textContent=String(notes.length);
+    if(!notes.length){expandedVoiceId=null;box.innerHTML='<div class="empty" style="padding:8px">尚無錄音</div>';return;}
+    if(expandedVoiceId && !notes.some(n=>n.id===expandedVoiceId)) expandedVoiceId=null;
     box.innerHTML="";
     notes.forEach((note,index)=>{
       const item=document.createElement("div");
-      item.className="voice-note";
-      const title=document.createElement("span");
-      title.className="voice-number";
-      title.textContent="錄音 "+(notes.length-index);
-      const meta=document.createElement("div");
-      meta.className="note-meta";
+      item.className="voice-note"+(expandedVoiceId===note.id?" expanded":"");
+      const head=document.createElement("div");head.className="note-head";head.setAttribute("role","button");head.setAttribute("tabindex","0");
+      const title=document.createElement("span");title.className="voice-number";title.textContent="#"+(notes.length-index);
+      const meta=document.createElement("span");meta.className="note-meta";
       const d=new Date(note.createdAt);
       meta.textContent=d.toLocaleDateString("zh-TW",{month:"2-digit",day:"2-digit"})+" "+d.toLocaleTimeString("zh-TW",{hour:"2-digit",minute:"2-digit"});
-      const transcript=document.createElement("div");
-      transcript.className="transcript-text";
-      transcript.textContent=(note.transcript||"").trim() || "（沒有轉文字內容）";
-      const audio=document.createElement("audio");
-      audio.controls=true;
-      audio.preload="metadata";
-      audio.src=URL.createObjectURL(note.blob);
-      const del=document.createElement("button");
-      del.className="danger voice-delete";
-      del.textContent="🗑 刪除這筆";
-      del.onclick=async()=>{
-        del.disabled=true;
-        try{
-          await voiceTx("readwrite",s=>s.delete(note.id));
-          if(audio.src)URL.revokeObjectURL(audio.src);
-          await refreshVoiceNotes();
-          setVoiceStatus("已刪除錄音。");
-        }catch(e){del.disabled=false;setVoiceStatus("刪除失敗，請再試一次。");}
-      };
-      item.append(title,meta,transcript,audio,del);
-      box.append(item);
+      head.append(title,meta);
+      const details=document.createElement("div");details.className="note-details";
+      const transcript=document.createElement("div");transcript.className="transcript-text";transcript.textContent=(note.transcript||"").trim() || "（沒有轉文字內容）";
+      const audio=document.createElement("audio");audio.controls=true;audio.preload="metadata";audio.src=URL.createObjectURL(note.blob);
+      const del=document.createElement("button");del.className="danger voice-delete";del.textContent="🗑 刪除這筆";
+      del.onclick=async()=>{del.disabled=true;try{await voiceTx("readwrite",s=>s.delete(note.id));if(audio.src)URL.revokeObjectURL(audio.src);if(expandedVoiceId===note.id)expandedVoiceId=null;await refreshVoiceNotes();setVoiceStatus("已刪除錄音。");}catch(e){del.disabled=false;setVoiceStatus("刪除失敗，請再試一次。");}};
+      details.append(transcript,audio,del);
+      const toggle=()=>{expandedVoiceId=expandedVoiceId===note.id?null:note.id;refreshVoiceNotes();};
+      head.onclick=toggle;head.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();toggle();}};
+      item.append(head,details);box.append(item);
     });
-  }catch(e){
-    box.innerHTML='<div class="empty" style="grid-column:1/-1">讀取錄音清單失敗：'+escapeHtml(e.message||"未知錯誤")+'</div>';
-  }
+  }catch(e){box.innerHTML='<div class="empty" style="padding:8px">讀取錄音清單失敗：'+escapeHtml(e.message||"未知錯誤")+'</div>';}
 }
 function setVoiceStatus(msg){document.getElementById("voiceStatus").textContent=msg;}
 function stopRecognition(){
@@ -495,60 +485,83 @@ function startRecognitionIfEnabled(){
 }
 async function toggleRecording(){
   const btn=document.getElementById("recordBtn");
+  // 防止上一段錄音尚未寫入資料庫時，立刻開始下一段造成資料互相覆蓋。
+  if(isSavingVoice || btn.disabled)return;
   if(mediaRecorder && mediaRecorder.state==="recording"){
-    mediaRecorder.stop();
-    btn.textContent="🎙️ 開始錄音";
+    isSavingVoice=true;
+    btn.disabled=true;
+    btn.textContent="正在保存…";
     btn.classList.remove("recording");
-    setVoiceStatus("正在保存錄音…");
+    setVoiceStatus("正在保存錄音，完成後就能錄下一筆…");
     stopRecognition();
+    try{ mediaRecorder.stop(); }
+    catch(e){
+      isSavingVoice=false;btn.disabled=false;btn.textContent="🎙️ 開始錄音";
+      setVoiceStatus("停止錄音失敗，請再試一次。");
+    }
     return;
   }
   if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder){
-    setVoiceStatus("此環境不支援網頁錄音。請用 Safari 開啟 HTTPS 網址，並允許麥克風。");
+    setVoiceStatus("目前瀏覽器不支援錄音，請使用 Safari 開啟 HTTPS 網址並允許麥克風。");
     alert("目前環境不支援網頁錄音。請確認使用 Safari、HTTPS 網址與麥克風權限。");
     return;
   }
   try{
     await openVoiceDB();
+    // 每次錄音開始前清空上一段文字，避免把上一筆文字帶入新錄音。
+    document.getElementById("liveTranscript").value="";
+    transcriptText="";
     activeStream=await navigator.mediaDevices.getUserMedia({audio:true});
     activeChunks=[];
     currentNoteId=Date.now().toString(36)+Math.random().toString(36).slice(2,8);
     startRecognitionIfEnabled();
     const mimeCandidates=["audio/mp4","audio/webm;codecs=opus","audio/webm","audio/ogg;codecs=opus"];
     const mimeType=mimeCandidates.find(t=>MediaRecorder.isTypeSupported(t));
-    mediaRecorder=mimeType ? new MediaRecorder(activeStream,{mimeType}) : new MediaRecorder(activeStream);
-    mediaRecorder.ondataavailable=e=>{if(e.data&&e.data.size)activeChunks.push(e.data);};
-    mediaRecorder.onerror=()=>setVoiceStatus("錄音發生錯誤，請再試一次。");
-    mediaRecorder.onstop=async()=>{
+    const thisRecorder=mimeType ? new MediaRecorder(activeStream,{mimeType}) : new MediaRecorder(activeStream);
+    mediaRecorder=thisRecorder;
+    const thisChunks=activeChunks;
+    const thisNoteId=currentNoteId;
+    const thisStream=activeStream;
+    thisRecorder.ondataavailable=e=>{if(e.data&&e.data.size)thisChunks.push(e.data);};
+    thisRecorder.onerror=()=>setVoiceStatus("錄音發生錯誤，請停止後再試一次。");
+    thisRecorder.onstop=async()=>{
       try{
-        const type=mediaRecorder.mimeType||"audio/webm";
-        const blob=new Blob(activeChunks,{type});
-        if(!blob.size){setVoiceStatus("錄音是空的，沒有保存。");return;}
+        const type=thisRecorder.mimeType||"audio/mp4";
+        const blob=new Blob(thisChunks,{type});
+        if(!blob.size){setVoiceStatus("這段錄音沒有收到音訊，請再錄一次。");return;}
         const note={
-          id:currentNoteId,
+          id:thisNoteId,
           createdAt:Date.now(),
           blob,
-          transcript:document.getElementById("transcriptToggle").checked ? (document.getElementById("liveTranscript").value.trim()) : "",
+          transcript:document.getElementById("transcriptToggle").checked ? document.getElementById("liveTranscript").value.trim() : "",
           memo:""
         };
-        await voiceTx("readwrite",s=>s.put(note));
-        setVoiceStatus("已保存");
+        await voiceTx("readwrite",store=>store.put(note));
         await refreshVoiceNotes();
+        setVoiceStatus("已保存這筆錄音，可以開始下一筆。");
       }catch(e){
-        setVoiceStatus("保存失敗："+(e.message||"請檢查手機儲存空間與瀏覽器權限。"));
+        setVoiceStatus("保存失敗，請保持頁面開啟再試一次。"+(e.message?"（"+e.message+"）":""));
       }finally{
-        if(activeStream)activeStream.getTracks().forEach(t=>t.stop());
-        activeStream=null;activeChunks=[];currentNoteId=null;
+        if(thisStream)thisStream.getTracks().forEach(t=>t.stop());
+        if(activeStream===thisStream)activeStream=null;
+        if(activeChunks===thisChunks)activeChunks=[];
+        if(currentNoteId===thisNoteId)currentNoteId=null;
+        if(mediaRecorder===thisRecorder)mediaRecorder=null;
+        isSavingVoice=false;
+        btn.disabled=false;
+        btn.textContent="🎙️ 開始錄音";
+        btn.classList.remove("recording");
       }
     };
-    mediaRecorder.start(1000);
+    thisRecorder.start(1000);
     btn.textContent="⏹ 停止並保存";
     btn.classList.add("recording");
-    setVoiceStatus("錄音中…再次按下停止並保存。");
+    setVoiceStatus("錄音中…按下停止後，等保存完成再錄下一筆。");
   }catch(e){
     setVoiceStatus("無法開始錄音："+(e.message||"請確認麥克風權限與 HTTPS 網址。"));
     if(activeStream)activeStream.getTracks().forEach(t=>t.stop());
-    activeStream=null;
+    activeStream=null;activeChunks=[];currentNoteId=null;
+    btn.disabled=false;btn.textContent="🎙️ 開始錄音";btn.classList.remove("recording");
   }
 }
 document.getElementById("transcriptToggle").addEventListener("change",e=>{
