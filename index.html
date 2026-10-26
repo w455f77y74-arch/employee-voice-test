@@ -57,15 +57,16 @@ hr{border:0;border-top:1px solid var(--line);margin:15px 0}
 .footer{text-align:center;color:#9ca3af;font-size:12px;margin-top:20px}
 .voice-card{padding:8px;margin-bottom:6px}.voice-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:7px}
 .voice-actions button{width:100%;height:38px}.recording{background:#fee2e2;color:#b91c1c}
-#voiceNotes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:7px}
+#voiceNotes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:6px}
 .voice-note{min-width:0;border:1px solid var(--line);border-radius:9px;padding:7px;background:#fafafa;overflow:hidden}
-.voice-note .note-meta{font-size:11px;color:var(--muted);margin:3px 0;line-height:1.3}
-.voice-note audio{display:block;width:100%;height:34px;margin:5px 0}
-.voice-note .voice-delete{width:100%;height:32px;font-size:12px;padding:0 4px;margin-top:4px}
-.voice-note .voice-number{font-size:14px;font-weight:800;display:block;overflow-wrap:anywhere}
+.voice-note .note-meta{font-size:10px;color:var(--muted);margin:2px 0;line-height:1.2}
+.voice-note audio{display:block;width:100%;height:30px;margin:3px 0}
+.voice-note .voice-delete{width:100%;height:29px;font-size:12px;padding:0 4px;margin-top:3px}
+.voice-note .voice-number{font-size:13px;font-weight:800;display:block;overflow-wrap:anywhere}
+.voice-note .transcript-text{font-size:12px;line-height:1.35;white-space:pre-wrap;overflow-wrap:anywhere;max-height:72px;overflow:auto;padding:4px 5px;margin:4px 0;background:#fff;border:1px solid #e5e7eb;border-radius:6px}
 @media(min-width:520px){#voiceNotes{grid-template-columns:repeat(3,minmax(0,1fr))}}
-.toggle-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px;font-size:14px}
-.toggle-row input{width:22px;height:22px}.voice-status{font-size:13px;margin-top:6px;color:var(--muted);line-height:1.5}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:4px;font-size:12px}
+.toggle-row input{width:20px;height:20px}.voice-status{font-size:11px;margin-top:3px;color:var(--muted);line-height:1.25;min-height:0}
 @media(min-width:600px){.modal{align-items:center}.modalbox{border-radius:22px}}
 </style>
 </head>
@@ -97,24 +98,17 @@ hr{border:0;border-top:1px solid var(--line);margin:15px 0}
     </div>
 
     <div class="card voice-card">
-      <b>🎙️ 語音備忘錄</b>
-      <div class="muted">每筆錄音各自保存；下方以小格排列，聽完可直接刪除。</div>
       <div class="toggle-row">
-        <label for="transcriptToggle" style="margin:0">語音轉文字（可關閉）</label>
-        <input id="transcriptToggle" type="checkbox" checked>
+        <b>🎙️ 錄音</b>
+        <label for="transcriptToggle" style="margin:0;display:flex;align-items:center;gap:5px">轉文字 <input id="transcriptToggle" type="checkbox" checked></label>
       </div>
-      <div class="voice-actions">
+      <div class="voice-actions" style="grid-template-columns:1fr">
         <button id="recordBtn" class="blue" onclick="toggleRecording()">🎙️ 開始錄音</button>
-        <button class="light" onclick="refreshVoiceNotes()">更新錄音清單</button>
       </div>
-      <div id="voiceStatus" class="voice-status">尚未錄音。首次使用時，請允許瀏覽器使用麥克風。</div>
-      <div id="transcriptArea" class="hidden">
-        <div class="muted" style="margin-top:8px">轉文字結果（可能有誤，可自行修改）</div>
-        <textarea id="liveTranscript" placeholder="若此瀏覽器支援語音辨識，轉出的文字會顯示在這裡；錄音仍會原始保存。"></textarea>
-      </div>
-      <div style="margin-top:10px"><b>已保存的錄音</b><span id="voiceCount" class="muted">（0）</span></div>
-      <div id="voiceNotes"><div class="empty">目前沒有錄音</div></div>
-      <div class="muted" style="margin-top:7px">錄音只存在這台裝置的瀏覽器中；清除網站資料可能會一起刪除。</div>
+      <div id="voiceStatus" class="voice-status" aria-live="polite"></div>
+      <div id="transcriptArea" class="hidden"><textarea id="liveTranscript" placeholder="" aria-label="錄音即時轉文字" style="height:60px;font-size:13px;margin-top:5px"></textarea></div>
+      <div style="margin-top:7px"><b>錄音</b><span id="voiceCount" class="muted">（0）</span></div>
+      <div id="voiceNotes"><div class="empty" style="grid-column:1/-1;padding:8px">尚無錄音</div></div>
     </div>
 
     <div class="card stat-card">
@@ -424,7 +418,7 @@ async function refreshVoiceNotes(){
   try{
     const notes=await getVoiceNotes();
     count.textContent="（"+notes.length+"）";
-    if(!notes.length){box.innerHTML='<div class="empty" style="grid-column:1/-1;padding:12px">目前沒有錄音</div>';return;}
+    if(!notes.length){box.innerHTML='<div class="empty" style="grid-column:1/-1;padding:12px">尚無錄音</div>';return;}
     box.innerHTML="";
     notes.forEach((note,index)=>{
       const item=document.createElement("div");
@@ -436,6 +430,9 @@ async function refreshVoiceNotes(){
       meta.className="note-meta";
       const d=new Date(note.createdAt);
       meta.textContent=d.toLocaleDateString("zh-TW",{month:"2-digit",day:"2-digit"})+" "+d.toLocaleTimeString("zh-TW",{hour:"2-digit",minute:"2-digit"});
+      const transcript=document.createElement("div");
+      transcript.className="transcript-text";
+      transcript.textContent=(note.transcript||"").trim() || "（沒有轉文字內容）";
       const audio=document.createElement("audio");
       audio.controls=true;
       audio.preload="metadata";
@@ -452,7 +449,7 @@ async function refreshVoiceNotes(){
           setVoiceStatus("已刪除錄音。");
         }catch(e){del.disabled=false;setVoiceStatus("刪除失敗，請再試一次。");}
       };
-      item.append(title,meta,audio,del);
+      item.append(title,meta,transcript,audio,del);
       box.append(item);
     });
   }catch(e){
@@ -471,7 +468,7 @@ function startRecognitionIfEnabled(){
   if(!enabled)return;
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!SR){
-    setVoiceStatus("錄音已啟用；此瀏覽器未提供語音辨識，仍會保存完整音檔。");
+    setVoiceStatus("此瀏覽器不支援轉文字，仍可錄音。");
     return;
   }
   try{
@@ -490,10 +487,10 @@ function startRecognitionIfEnabled(){
       transcriptText=finalText;
       document.getElementById("liveTranscript").value=finalText+interim;
     };
-    recognition.onerror=()=>setVoiceStatus("語音辨識暫時不可用；錄音仍會保留，文字可以忽略。");
+    recognition.onerror=()=>setVoiceStatus("轉文字暫不可用。");
     recognition.start();
   }catch(e){
-    setVoiceStatus("語音辨識無法啟動；錄音仍會保留。");
+    setVoiceStatus("轉文字無法啟動。");
   }
 }
 async function toggleRecording(){
@@ -535,7 +532,7 @@ async function toggleRecording(){
           memo:""
         };
         await voiceTx("readwrite",s=>s.put(note));
-        setVoiceStatus("錄音已保存。你可以繼續錄下一筆，之前的錄音不會被覆蓋。");
+        setVoiceStatus("已保存");
         await refreshVoiceNotes();
       }catch(e){
         setVoiceStatus("保存失敗："+(e.message||"請檢查手機儲存空間與瀏覽器權限。"));
@@ -561,9 +558,9 @@ document.getElementById("transcriptToggle").addEventListener("change",e=>{
     stopRecognition();
     document.getElementById("liveTranscript").value="";
     transcriptText="";
-    setVoiceStatus("已關閉語音轉文字；錄音功能仍可正常使用。");
+    setVoiceStatus("轉文字已關閉");
   }else{
-    setVoiceStatus("已開啟語音轉文字。若辨識不支援或不準確，可隨時關閉；原始錄音仍以音檔保存。");
+    setVoiceStatus("轉文字已開啟");
   }
 });
 window.addEventListener("beforeunload",()=>{
