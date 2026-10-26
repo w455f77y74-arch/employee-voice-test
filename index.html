@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="員工記錄">
+<title>員工記錄手機 App</title>
+<style>
+:root{
+  --bg:#f3f4f6;--card:#fff;--text:#111827;--muted:#6b7280;
+  --line:#e5e7eb;--primary:#111827;--accent:#2563eb;--danger:#dc2626;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Noto Sans TC",Arial,sans-serif}
+header{background:#111827;color:#fff;padding:18px 18px 16px;position:sticky;top:0;z-index:5}
+h1{font-size:22px;margin:0 0 4px}.sub{font-size:13px;opacity:.72}
+main{max-width:620px;margin:auto;padding:7px 9px 20px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:6px;margin-bottom:5px;box-shadow:0 3px 14px rgba(0,0,0,.04)}
+label{display:block;font-size:12px;font-weight:700;margin:0 0 3px}
+input{width:100%;height:48px;border:1px solid #d1d5db;border-radius:12px;padding:0 13px;font-size:17px;background:#fff;color:var(--text)}
+.time-input{height:28px;font-size:12px;padding:0 8px}
+.amount-input{height:30px;font-size:15px;font-weight:500;text-align:left;padding:0 8px;border-radius:7px;line-height:30px}.phone-input{height:30px;font-size:15px;font-weight:400;text-align:left;padding:0 8px;border-radius:7px}
+.form-top{padding:4px 8px;margin-bottom:4px}
+.form-bottom{padding:5px 8px;margin-bottom:4px}
+.stat-card{padding:4px 8px;margin-bottom:4px}
+.stat-card .stat{font-size:20px;margin-top:0}
+.add-record{height:36px;font-size:14px;margin-top:5px}
+.action-row{display:grid;grid-template-columns:2fr 1fr;gap:6px;margin-top:5px}
+.action-row button{margin-top:0;width:100%}
+.clear-record{height:36px;font-size:14px}
+.hidden-time{display:none!important}
+.manager-bottom{padding:6px;margin-top:5px}
+.manager-bottom button{width:100%;height:36px;font-size:14px}
+input:focus{outline:2px solid #bfdbfe;border-color:#60a5fa}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+button{border:0;border-radius:9px;height:38px;padding:0 10px;font-size:14px;font-weight:700;cursor:pointer}
+.primary{background:var(--primary);color:#fff;width:100%;margin-top:12px}
+.blue{background:var(--accent);color:#fff}.light{background:#eef2f7;color:#111827}
+.danger{background:#fee2e2;color:#b91c1c}
+.toolbar{display:grid;grid-template-columns:1fr 1fr;gap:6px}.toolbar button:last-child{grid-column:1 / -1}
+.hidden{display:none!important}
+.stat{font-size:28px;font-weight:800;margin-top:4px}.muted{color:var(--muted);font-size:13px}
+.record{position:relative;border:1px solid var(--line);border-radius:10px;padding:8px 9px;margin-top:5px;background:#fafafa;overflow:hidden}
+.record-top{display:flex;justify-content:flex-start;gap:8px;font-weight:700;position:relative;z-index:2;min-height:34px}.record-top span:last-child{font-size:32px;font-weight:950;line-height:1}
+.record-meta{position:relative;z-index:2;width:46%;font-size:11px;color:var(--muted);margin-top:2px;line-height:1.25}.record-phone{font-size:24px;font-weight:900;color:var(--text)}.record-top span:last-child{position:absolute;right:0;top:0;width:58%;height:100%;font-size:52px;font-weight:950;color:#111827;line-height:1;display:flex;align-items:center;justify-content:center;text-align:center;white-space:nowrap}.recent-phone{font-size:28px;font-weight:950;color:#111827;line-height:1}.record-colored{color:var(--record-color)!important}
+.record-actions{display:flex;justify-content:flex-end;margin-top:8px}
+.small{height:38px;font-size:14px}
+.empty{text-align:center;padding:22px;color:var(--muted)}
+.notice{font-size:13px;color:#4b5563;line-height:1.6;background:#f9fafb;border-radius:12px;padding:11px}
+hr{border:0;border-top:1px solid var(--line);margin:15px 0}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.48);display:flex;align-items:flex-end;justify-content:center;z-index:20}
+.modalbox{background:#fff;width:100%;max-width:620px;border-radius:22px 22px 0 0;padding:18px 16px 28px}
+.modalbox h2{margin:0 0 12px;font-size:20px}
+.footer{text-align:center;color:#9ca3af;font-size:12px;margin-top:20px}
+.voice-card{padding:10px;margin-bottom:6px}.voice-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.voice-actions button{width:100%;height:42px}.recording{background:#fee2e2;color:#b91c1c}
+.voice-note{border:1px solid var(--line);border-radius:10px;padding:10px;margin-top:8px;background:#fafafa}
+.voice-note audio{width:100%;margin-top:7px}.voice-note .note-meta{font-size:12px;color:var(--muted);margin-top:4px}
+.voice-note textarea{width:100%;min-height:64px;margin-top:8px;border:1px solid #d1d5db;border-radius:8px;padding:8px;font-size:14px}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px;font-size:14px}
+.toggle-row input{width:22px;height:22px}.voice-status{font-size:13px;margin-top:6px;color:var(--muted);line-height:1.5}
+@media(min-width:600px){.modal{align-items:center}.modalbox{border-radius:22px}}
+</style>
+</head>
+<body>
+<header aria-hidden="true"></header>
+
+<main>
+  <section id="staffPage">
+    <div class="hidden-time">
+      <input id="workTime" type="datetime-local" readonly aria-label="自動記錄時間">
+    </div>
+
+    <div class="card form-bottom">
+      <div class="row">
+        <div>
+          <label for="amount">金額</label>
+          <input id="amount" class="amount-input" type="number" inputmode="decimal" min="0" step="1" placeholder="例如 500">
+        </div>
+        <div>
+          <label for="phone3">電話末三碼</label>
+          <input id="phone3" class="phone-input" type="text" inputmode="numeric" maxlength="3" placeholder="末三碼">
+        </div>
+      </div>
+
+      <div class="action-row">
+        <button class="primary add-record" onclick="addRecord()">＋ 新增紀錄</button>
+        <button class="light clear-record" onclick="clearForm()">清空輸入</button>
+      </div>
+    </div>
+
+    <div class="card voice-card">
+      <b>🎙️ 語音備忘錄</b>
+      <div class="muted">每次錄音都會獨立保存，不會被下一筆覆蓋。</div>
+      <div class="toggle-row">
+        <label for="transcriptToggle" style="margin:0">語音轉文字（可關閉）</label>
+        <input id="transcriptToggle" type="checkbox" checked>
+      </div>
+      <div class="voice-actions">
+        <button id="recordBtn" class="blue" onclick="toggleRecording()">🎙️ 開始錄音</button>
+        <button class="light" onclick="refreshVoiceNotes()">更新錄音清單</button>
+      </div>
+      <div id="voiceStatus" class="voice-status">尚未錄音。首次使用時，請允許瀏覽器使用麥克風。</div>
+      <div id="transcriptArea" class="hidden">
+        <div class="muted" style="margin-top:8px">轉文字結果（可能有誤，可自行修改）</div>
+        <textarea id="liveTranscript" placeholder="若此瀏覽器支援語音辨識，轉出的文字會顯示在這裡；錄音仍會原始保存。"></textarea>
+      </div>
+      <div style="margin-top:10px"><b>已保存的錄音</b><span id="voiceCount" class="muted">（0）</span></div>
+      <div id="voiceNotes"><div class="empty">目前沒有錄音</div></div>
+      <div class="notice" style="margin-top:8px">提醒：網頁錄音通常需要 HTTPS 網址及麥克風權限。iPhone 通話中可能無法同時使用麥克風；錄音資料存在本機瀏覽器，請定期匯出或備份。</div>
+    </div>
+
+    <div class="card stat-card">
+      <b>今日已新增紀錄</b>
+      <div id="staffCount" class="stat">0</div>
+      <div class="muted">員工頁只顯示紀錄筆數，不顯示總金額。</div>
+    </div>
+
+    <div class="card">
+      <b>最近 5 筆訂單</b>
+      <div id="recentRecords"></div>
+    </div>
+
+    <div class="card manager-bottom">
+      <button class="light" onclick="openManager()">程式管理</button>
+    </div>
+  </section>
+
+  <section id="managerPage" class="hidden">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div><b>程式管理</b><div class="muted">完整紀錄與金額</div></div>
+        <button class="light small" onclick="backToStaff()">返回員工頁</button>
+      </div>
+      <hr>
+      <div class="row">
+        <div>
+          <div class="muted">總筆數</div>
+          <div id="totalCount" class="stat">0</div>
+        </div>
+        <div>
+          <div class="muted">總金額</div>
+          <div id="totalAmount" class="stat">$0</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="toolbar">
+        <button class="blue" onclick="exportCSV()">匯出 CSV</button>
+        <button class="light" onclick="changePassword()">修改密碼</button>
+        <button class="danger" onclick="deleteAll()">清除全部</button>
+      </div>
+      <div id="records"></div>
+    </div>
+
+    <div class="card notice">
+      <b>重要：</b>目前這個單一 HTML 版本不需要 Excel，也不需要另外安裝 App。
+      資料存在「使用這個網頁的手機」裡。若員工和老闆使用不同手機，兩台手機的資料不會自動同步。
+    </div>
+  </section>
+
+  <div class="footer">員工記錄手機 App｜單一 HTML 版本</div>
+</main>
+
+<div id="passwordModal" class="modal hidden">
+  <div class="modalbox">
+    <h2>程式管理</h2>
+    <div class="muted" style="margin-bottom:10px">請輸入管理密碼</div>
+    <input id="password" type="password" inputmode="numeric" maxlength="4" placeholder="">
+    <button class="primary" onclick="checkPassword()">進入管理頁</button>
+    <button class="light" style="width:100%;margin-top:8px" onclick="closeModal()">取消</button>
+  </div>
+</div>
+
+<script>
+const KEY="employee_records_v1";
+const DEFAULT_PASSWORD="0922";
+const PASSWORD_KEY="employee_admin_password_v1";
+function getPassword(){return localStorage.getItem(PASSWORD_KEY)||DEFAULT_PASSWORD;}
+function setPassword(v){localStorage.setItem(PASSWORD_KEY,v);}
+
+function loadRecords(){
+  try{return JSON.parse(localStorage.getItem(KEY)||"[]")}catch(e){return []}
+}
+function saveRecords(records){localStorage.setItem(KEY,JSON.stringify(records))}
+function pad(n){return String(n).padStart(2,"0")}
+function nowLocal(){
+  const d=new Date();
+  return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+"T"+pad(d.getHours())+":"+pad(d.getMinutes());
+}
+function fmtTime(v){
+  if(!v)return "";
+  const d=new Date(v);
+  if(Number.isNaN(d.getTime())) return v;
+  return d.getFullYear()+"/"+pad(d.getMonth()+1)+"/"+pad(d.getDate())+" "+
+         pad(d.getHours())+":"+pad(d.getMinutes());
+}
+function money(n){return Number(n||0).toLocaleString("zh-TW",{maximumFractionDigits:0})}
+
+document.getElementById("workTime").value=nowLocal();
+
+// 員工輸入金額時，自動把時間更新成當下時間。
+function refreshTimeOnAmount(){
+  const amount=document.getElementById("amount").value.trim();
+  if(amount!=="") document.getElementById("workTime").value=nowLocal();
+}
+document.getElementById("amount").addEventListener("input",refreshTimeOnAmount);
+
+function clearForm(){
+  document.getElementById("amount").value="";
+  document.getElementById("phone3").value="";
+  document.getElementById("workTime").value=nowLocal();
+}
+
+function addRecord(){
+  const time=document.getElementById("workTime").value;
+  const rawAmount=document.getElementById("amount").value.trim();
+  const amount=Number(rawAmount);
+  const phone=document.getElementById("phone3").value.trim();
+
+  if(!rawAmount){alert("請先輸入金額，再新增紀錄");return}
+  if(!time){alert("請輸入時間");return}
+  if(!Number.isFinite(amount)||amount<0){alert("請輸入正確金額");return}
+  if(phone && !/^\d{3}$/.test(phone)){alert("電話末三碼請輸入 3 個數字；也可以留空");return}
+
+  const records=loadRecords();
+  records.unshift({
+    id:Date.now().toString(36)+Math.random().toString(36).slice(2,7),
+    time,amount,phone,
+    createdAt:new Date().toISOString()
+  });
+  saveRecords(records);
+  clearForm();
+  updateStaffCount();
+  renderRecentRecords();
+}
+
+const RECORD_COLORS=["#2563eb","#dc2626","#059669","#d97706","#7c3aed"];
+function recordColor(index, phone){return phone ? RECORD_COLORS[index % RECORD_COLORS.length] : "#111827";}
+
+function renderRecentRecords(){
+  const records=loadRecords().slice(0,5);
+  const box=document.getElementById("recentRecords");
+  if(!records.length){
+    box.innerHTML='<div class="empty">目前還沒有訂單</div>';
+    return;
+  }
+  box.innerHTML=records.map((r,i)=>{
+    const color=recordColor(i,r.phone);
+    const cls=r.phone ? " record-colored" : "";
+    const style=r.phone ? ` style="--record-color:${color}"` : "";
+    return `
+    <div class="record">
+      <div class="record-top">
+        <span>第 ${i+1} 筆</span>
+        <span class="${cls}"${style}>$${money(r.amount)}</span>
+      </div>
+      <div class="record-meta">
+        時間：${escapeHtml(fmtTime(r.time))}<br>
+        電話末三碼：<span class="recent-phone${cls}"${style}>${r.phone ? escapeHtml(r.phone) : '未填'}</span>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function updateStaffCount(){
+  const today=new Date();
+  const y=today.getFullYear(),m=today.getMonth(),d=today.getDate();
+  const count=loadRecords().filter(r=>{
+    const x=new Date(r.time);
+    return x.getFullYear()===y&&x.getMonth()===m&&x.getDate()===d;
+  }).length;
+  document.getElementById("staffCount").textContent=count;
+}
+
+function openManager(){
+  document.getElementById("password").value="";
+  document.getElementById("passwordModal").classList.remove("hidden");
+  setTimeout(()=>document.getElementById("password").focus(),100);
+}
+function closeModal(){document.getElementById("passwordModal").classList.add("hidden")}
+function checkPassword(){
+  if(document.getElementById("password").value===getPassword()){
+    closeModal();
+    document.getElementById("staffPage").classList.add("hidden");
+    document.getElementById("managerPage").classList.remove("hidden");
+    renderManager();
+  }else alert("密碼錯誤");
+}
+function changePassword(){
+  const current=prompt("請輸入目前管理密碼");
+  if(current===null)return;
+  if(current!==getPassword()){alert("目前密碼錯誤");return}
+  const next=prompt("請輸入新的管理密碼（4位數字）");
+  if(next===null)return;
+  if(!/^\d{4}$/.test(next)){alert("新密碼請輸入4位數字");return}
+  const confirmNext=prompt("請再次輸入新密碼");
+  if(confirmNext!==next){alert("兩次輸入的新密碼不一致");return}
+  setPassword(next);
+  alert("管理密碼已修改");
+}
+document.getElementById("password").addEventListener("keydown",e=>{if(e.key==="Enter")checkPassword()});
+
+function backToStaff(){
+  document.getElementById("managerPage").classList.add("hidden");
+  document.getElementById("staffPage").classList.remove("hidden");
+  updateStaffCount();
+}
+
+function renderManager(){
+  const records=loadRecords();
+  document.getElementById("totalCount").textContent=records.length;
+  document.getElementById("totalAmount").textContent="$"+money(records.reduce((s,r)=>s+Number(r.amount||0),0));
+  const box=document.getElementById("records");
+  if(!records.length){box.innerHTML='<div class="empty">目前沒有紀錄</div>';return}
+  box.innerHTML=records.map((r,i)=>{
+    const color=recordColor(i,r.phone);
+    const cls=r.phone ? " record-colored" : "";
+    const style=r.phone ? ` style="--record-color:${color}"` : "";
+    return `
+    <div class="record">
+      <div class="record-top">
+        <span>#${records.length-i}</span>
+        <span class="${cls}"${style}>$${money(r.amount)}</span>
+      </div>
+      <div class="record-meta">
+        時間：${escapeHtml(fmtTime(r.time))}<br>
+        電話末三碼：<span class="record-phone${cls}"${style}>${r.phone ? escapeHtml(r.phone) : "未填"}</span>
+      </div>
+      <div class="record-actions">
+        <button class="danger small" onclick="deleteOne('${r.id}')">刪除</button>
+      </div>
+    </div>`;
+  }).join("");
+}
+function deleteOne(id){
+  if(!confirm("確定要刪除這筆紀錄嗎？"))return;
+  saveRecords(loadRecords().filter(r=>r.id!==id));
+  renderManager();updateStaffCount();renderRecentRecords();
+}
+function deleteAll(){
+  const records=loadRecords();
+  if(!records.length)return;
+  if(confirm("確定要清除全部紀錄？這個動作無法復原。")){
+    localStorage.removeItem(KEY);renderManager();updateStaffCount();renderRecentRecords();
+  }
+}
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+function exportCSV(){
+  const records=loadRecords();
+  if(!records.length){alert("目前沒有資料可以匯出");return}
+  const rows=[["時間","金額","電話末三碼"],
+    ...records.map(r=>[fmtTime(r.time),r.amount,r.phone])];
+  const csv="\uFEFF"+rows.map(row=>row.map(v=>{
+    const s=String(v??"").replace(/"/g,'""');return '"'+s+'"';
+  }).join(",")).join("\r\n");
+  const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="員工記錄_"+new Date().toISOString().slice(0,10)+".csv";
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// 語音備忘錄：每一筆使用獨立 ID，錄音資料存於 IndexedDB（與記帳 localStorage 分開）。
+const VOICE_DB_NAME = "employee_voice_notes_db_v1";
+const VOICE_STORE = "notes";
+let voiceDb = null;
+let mediaRecorder = null;
+let activeStream = null;
+let activeChunks = [];
+let recognition = null;
+let transcriptText = "";
+let currentNoteId = null;
+
+function openVoiceDB(){
+  return new Promise((resolve,reject)=>{
+    if(!("indexedDB" in window)){reject(new Error("此瀏覽器不支援錄音資料庫"));return;}
+    const req=indexedDB.open(VOICE_DB_NAME,1);
+    req.onupgradeneeded=()=>{
+      const db=req.result;
+      if(!db.objectStoreNames.contains(VOICE_STORE)){
+        const store=db.createObjectStore(VOICE_STORE,{keyPath:"id"});
+        store.createIndex("createdAt","createdAt",{unique:false});
+      }
+    };
+    req.onsuccess=()=>{voiceDb=req.result;resolve(voiceDb)};
+    req.onerror=()=>reject(req.error||new Error("無法開啟錄音資料庫"));
+  });
+}
+function voiceTx(mode, action){
+  return new Promise((resolve,reject)=>{
+    if(!voiceDb){reject(new Error("錄音資料庫尚未準備好"));return;}
+    const tx=voiceDb.transaction(VOICE_STORE,mode);
+    const store=tx.objectStore(VOICE_STORE);
+    let request;
+    try{request=action(store);}catch(e){reject(e);return;}
+    if(request){
+      request.onsuccess=()=>resolve(request.result);
+      request.onerror=()=>reject(request.error);
+    }else{
+      tx.oncomplete=()=>resolve(true);
+      tx.onerror=()=>reject(tx.error);
+    }
+  });
+}
+async function getVoiceNotes(){
+  const notes=await voiceTx("readonly",s=>s.getAll());
+  return (notes||[]).sort((a,b)=>b.createdAt-a.createdAt);
+}
+async function refreshVoiceNotes(){
+  const box=document.getElementById("voiceNotes");
+  const count=document.getElementById("voiceCount");
+  try{
+    const notes=await getVoiceNotes();
+    count.textContent="（"+notes.length+"）";
+    if(!notes.length){box.innerHTML='<div class="empty">目前沒有錄音</div>';return;}
+    box.innerHTML="";
+    notes.forEach(note=>{
+      const item=document.createElement("div");
+      item.className="voice-note";
+      const title=document.createElement("b");
+      title.textContent=new Date(note.createdAt).toLocaleString("zh-TW")+"｜語音備忘錄";
+      const meta=document.createElement("div");
+      meta.className="note-meta";
+      meta.textContent="錄音獨立保存"+(note.transcript ? "｜已附文字" : "");
+      const audio=document.createElement("audio");
+      audio.controls=true;
+      audio.src=URL.createObjectURL(note.blob);
+      audio.onended=()=>URL.revokeObjectURL(audio.src);
+      const memo=document.createElement("textarea");
+      memo.placeholder="可選填備註，例如：客人 3 號、加辣、另外裝";
+      memo.value=note.memo||"";
+      memo.addEventListener("change",async()=>{
+        note.memo=memo.value;
+        await voiceTx("readwrite",s=>s.put(note));
+      });
+      const transcript=document.createElement("div");
+      transcript.className="note-meta";
+      transcript.textContent=note.transcript ? "語音辨識參考文字："+note.transcript : "";
+      const actions=document.createElement("div");
+      actions.className="voice-actions";
+      const download=document.createElement("button");
+      download.className="light";
+      download.textContent="下載音檔";
+      download.onclick=()=>{
+        const url=URL.createObjectURL(note.blob);
+        const a=document.createElement("a");
+        a.href=url;a.download="語音備忘錄_"+new Date(note.createdAt).toISOString().replace(/[:.]/g,"-")+".webm";
+        a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+      };
+      const del=document.createElement("button");
+      del.className="danger";
+      del.textContent="刪除這筆";
+      del.onclick=async()=>{
+        if(!confirm("確定刪除這一筆錄音嗎？此動作無法復原。"))return;
+        await voiceTx("readwrite",s=>s.delete(note.id));
+        refreshVoiceNotes();
+      };
+      actions.append(download,del);
+      item.append(title,meta,audio,memo,transcript,actions);
+      box.append(item);
+    });
+  }catch(e){
+    box.innerHTML='<div class="empty">讀取錄音清單失敗：'+escapeHtml(e.message||"未知錯誤")+'</div>';
+  }
+}
+function setVoiceStatus(msg){document.getElementById("voiceStatus").textContent=msg;}
+function stopRecognition(){
+  if(recognition){try{recognition.stop();}catch(e){} recognition=null;}
+}
+function startRecognitionIfEnabled(){
+  transcriptText="";
+  const area=document.getElementById("transcriptArea");
+  const enabled=document.getElementById("transcriptToggle").checked;
+  area.classList.toggle("hidden",!enabled);
+  if(!enabled)return;
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){
+    setVoiceStatus("錄音已啟用；此瀏覽器未提供語音辨識，仍會保存完整音檔。");
+    return;
+  }
+  try{
+    recognition=new SR();
+    recognition.lang="zh-TW";
+    recognition.continuous=true;
+    recognition.interimResults=true;
+    recognition.onresult=e=>{
+      let finalText="";
+      let interim="";
+      for(let i=0;i<e.results.length;i++){
+        const t=e.results[i][0].transcript;
+        if(e.results[i].isFinal)finalText+=t;
+        else interim+=t;
+      }
+      transcriptText=finalText;
+      document.getElementById("liveTranscript").value=finalText+interim;
+    };
+    recognition.onerror=()=>setVoiceStatus("語音辨識暫時不可用；錄音仍會保留，文字可以忽略。");
+    recognition.start();
+  }catch(e){
+    setVoiceStatus("語音辨識無法啟動；錄音仍會保留。");
+  }
+}
+async function toggleRecording(){
+  const btn=document.getElementById("recordBtn");
+  if(mediaRecorder && mediaRecorder.state==="recording"){
+    mediaRecorder.stop();
+    btn.textContent="🎙️ 開始錄音";
+    btn.classList.remove("recording");
+    setVoiceStatus("正在保存錄音…");
+    stopRecognition();
+    return;
+  }
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder){
+    setVoiceStatus("此環境不支援網頁錄音。請用 Safari 開啟 HTTPS 網址，並允許麥克風。");
+    alert("目前環境不支援網頁錄音。請確認使用 Safari、HTTPS 網址與麥克風權限。");
+    return;
+  }
+  try{
+    await openVoiceDB();
+    activeStream=await navigator.mediaDevices.getUserMedia({audio:true});
+    activeChunks=[];
+    currentNoteId=Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+    startRecognitionIfEnabled();
+    const mimeCandidates=["audio/mp4","audio/webm;codecs=opus","audio/webm","audio/ogg;codecs=opus"];
+    const mimeType=mimeCandidates.find(t=>MediaRecorder.isTypeSupported(t));
+    mediaRecorder=mimeType ? new MediaRecorder(activeStream,{mimeType}) : new MediaRecorder(activeStream);
+    mediaRecorder.ondataavailable=e=>{if(e.data&&e.data.size)activeChunks.push(e.data);};
+    mediaRecorder.onerror=()=>setVoiceStatus("錄音發生錯誤，請再試一次。");
+    mediaRecorder.onstop=async()=>{
+      try{
+        const type=mediaRecorder.mimeType||"audio/webm";
+        const blob=new Blob(activeChunks,{type});
+        if(!blob.size){setVoiceStatus("錄音是空的，沒有保存。");return;}
+        const note={
+          id:currentNoteId,
+          createdAt:Date.now(),
+          blob,
+          transcript:document.getElementById("transcriptToggle").checked ? (document.getElementById("liveTranscript").value.trim()) : "",
+          memo:""
+        };
+        await voiceTx("readwrite",s=>s.put(note));
+        setVoiceStatus("錄音已保存。你可以繼續錄下一筆，之前的錄音不會被覆蓋。");
+        await refreshVoiceNotes();
+      }catch(e){
+        setVoiceStatus("保存失敗："+(e.message||"請檢查手機儲存空間與瀏覽器權限。"));
+      }finally{
+        if(activeStream)activeStream.getTracks().forEach(t=>t.stop());
+        activeStream=null;activeChunks=[];currentNoteId=null;
+      }
+    };
+    mediaRecorder.start(1000);
+    btn.textContent="⏹ 停止並保存";
+    btn.classList.add("recording");
+    setVoiceStatus("錄音中…再次按下停止並保存。");
+  }catch(e){
+    setVoiceStatus("無法開始錄音："+(e.message||"請確認麥克風權限與 HTTPS 網址。"));
+    if(activeStream)activeStream.getTracks().forEach(t=>t.stop());
+    activeStream=null;
+  }
+}
+document.getElementById("transcriptToggle").addEventListener("change",e=>{
+  const enabled=e.target.checked;
+  document.getElementById("transcriptArea").classList.toggle("hidden",!enabled);
+  if(!enabled){
+    stopRecognition();
+    document.getElementById("liveTranscript").value="";
+    transcriptText="";
+    setVoiceStatus("已關閉語音轉文字；錄音功能仍可正常使用。");
+  }else{
+    setVoiceStatus("已開啟語音轉文字。若辨識不支援或不準確，可隨時關閉；原始錄音仍以音檔保存。");
+  }
+});
+window.addEventListener("beforeunload",()=>{
+  if(mediaRecorder&&mediaRecorder.state==="recording")mediaRecorder.stop();
+  stopRecognition();
+});
+openVoiceDB().then(refreshVoiceNotes).catch(e=>{
+  setVoiceStatus("錄音資料庫初始化失敗；請確認瀏覽器支援 IndexedDB。");
+});
+updateStaffCount();
+renderRecentRecords();
+</script>
+</body>
+</html>
